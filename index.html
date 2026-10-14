@@ -277,7 +277,7 @@
             border-radius: 50%; font-size: 20px; cursor: pointer; box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
             display: flex; align-items: center; justify-content: center;
         }
-        #mediaInput, #postInput { display: none; }
+        #mediaInput, #postInput, #avatarInput { display: none; }
 
         /* Чат ва Зангҳо */
         .search-box {
@@ -336,7 +336,14 @@
         .profile-container {
             padding: 30px 20px; background: var(--card-bg); display: flex; flex-direction: column; align-items: center; gap: 18px; flex: 1;
         }
+        .profile-avatar-wrapper {
+            position: relative; cursor: pointer; display: inline-block;
+        }
         .profile-avatar { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 4px solid var(--primary-color); }
+        .profile-avatar-overlay {
+            position: absolute; bottom: 0; right: 0; background: var(--primary-color); color: white;
+            width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; border: 2px solid white;
+        }
         .profile-info { width: 100%; display: flex; flex-direction: column; gap: 14px; }
         .profile-info label { font-size: 12px; color: #64748b; font-weight: 700; }
         .profile-info input, .profile-info textarea {
@@ -467,7 +474,13 @@
                 </div>
             </div>
             <div class="profile-container">
-                <img src="https://via.placeholder.com/100" alt="Avatar" class="profile-avatar" id="profileAvatarImg">
+                <!-- Ивази расми профил бо пахш кардан -->
+                <div class="profile-avatar-wrapper" onclick="document.getElementById('avatarInput').click()" title="Иваз кардани расми профил">
+                    <img src="https://via.placeholder.com/100" alt="Avatar" class="profile-avatar" id="profileAvatarImg">
+                    <div class="profile-avatar-overlay"><i class="fas fa-camera"></i></div>
+                </div>
+                <input type="file" id="avatarInput" accept="image/*" onchange="handleAvatarUpload(event)">
+
                 <div class="profile-info">
                     <label>Номи ҳақиқӣ:</label>
                     <input type="text" id="profileNameInput" value="Номи Ман">
@@ -500,19 +513,17 @@
 
     <script>
         // ==========================================
-        // ТАНЗИМОТИ FIREBASE (Калидҳои худро ҷойгир кунед)
+        // ТАНЗИМОТИ FIREBASE
         // ==========================================
-     const firebaseConfig = {
-  apiKey: "AIzaSyBu7VU--6pI5FzQs2dlvx_LS3dyIt7sICM",
-  authDomain: "chatgram-d9d77.firebaseapp.com",
-  projectId: "chatgram-d9d77",
-  storageBucket: "chatgram-d9d77.firebasestorage.app",
-  messagingSenderId: "403592318179",
-  appId: "1:403592318179:web:10c76b8e9a51a0407ec9d6",
-  measurementId: "G-JRE5YSZC6X"
-};
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
 
-        // Инициализатсияи Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const storage = firebase.storage();
@@ -520,7 +531,7 @@
         let activeChatPhone = null;
         let localStream = null;
 
-        // --- ПРОФИЛ ВА ТАНЗИМОТ ---
+        // --- ПРОФИЛ ВА БОРКУНИИ АВАТАР ---
         function getMyProfile() {
             return JSON.parse(localStorage.getItem('secure_profile')) || {
                 name: "Номи Ман", phone: "+992918000000", bio: "Амният ва махфият...", avatar: "https://via.placeholder.com/100"
@@ -547,6 +558,27 @@
             localStorage.setItem('secure_profile', JSON.stringify(profile));
             loadProfile();
             alert("Профил захира шуд!");
+        }
+
+        // Боркунии расми профил ба Firebase Storage
+        function handleAvatarUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            let storageRef = storage.ref(`avatars/${Date.now()}_${file.name}`);
+            alert("Боркунии расми профил оғоз шуд...");
+
+            storageRef.put(file).then((snapshot) => {
+                snapshot.ref.getDownloadURL().then((downloadURL) => {
+                    let profile = getMyProfile();
+                    profile.avatar = downloadURL;
+                    localStorage.setItem('secure_profile', JSON.stringify(profile));
+                    document.getElementById('profileAvatarImg').src = downloadURL;
+                    alert("Расми профил бомуваффақият иваз шуд!");
+                });
+            }).catch((error) => {
+                alert("Хатогӣ дар боркунии расм: " + error.message);
+            });
         }
 
         function openSettings() {
@@ -720,7 +752,7 @@
             });
         }
 
-        // --- ИСТОРИЯҲО (FIREBASE STORAGE & FIRESTORE) ---
+        // --- ИСТОРИЯҲО ---
         function handleMediaUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
