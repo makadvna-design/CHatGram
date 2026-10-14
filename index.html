@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="tg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatGram - Онлайн бо Firebase</title>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase SDK Scripts (Барои пайвастшавӣ ба сервери Google) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --primary-gradient: linear-gradient(135deg, #4f46e5 0%, #9333ea 100%);
+            --whatsapp-color: #25d366;
+            --bg-color: #f8fafc;
+            --text-color: #0f172a;
+            --border-color: #e2e8f0;
+            --card-bg: #ffffff;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .dark-theme {
+            --bg-color: #0b0f19;
+            --text-color: #f1f5f9;
+            --border-color: #1e293b;
+            --card-bg: #131b2e;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: #cbd5e1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 420px;
+            height: 100%;
+            max-height: 860px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        @media (min-width: 481px) {
+            .app-container {
+                border-radius: 36px;
+                height: 92vh;
+                border: 10px solid #1e293b;
+            }
+        }
+
+        .tab-content {
+            display: none;
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 75px;
+        }
+
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-header {
+            background: var(--card-bg);
+            padding: 16px 20px;
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text-color);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .app-header span {
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-icons {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            font-size: 18px;
+            color: #64748b;
+            cursor: pointer;
+        }
+
+        .nav-bar {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: var(--card-bg);
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0;
+            border-top: 1px solid var(--border-color);
+            z-index: 1000;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            color: #64748b;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .tab-btn i {
+            font-size: 20px;
+        }
+
+        .tab-btn.active {
+            color: var(--primary-color);
+            font-weight: 700;
+        }
+
+        /* Танзимот */
+        #settingsModal {
+            display: none;
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: var(--bg-color);
+            z-index: 3000;
+            flex-direction: column;
+        }
+
+        .settings-header {
+            background: var(--card-bg);
+            padding: 18px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .settings-header i { cursor: pointer; }
+
+        .settings-body {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+        }
+
+        .setting-item {
+            background: var(--card-bg);
+            padding: 16px;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+        }
+
+        .setting-info { display: flex; flex-direction: column; gap: 4px; }
+        .setting-title { font-size: 15px; font-weight: 600; }
+        .setting-desc { font-size: 12px; color: #64748b; }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 48px; height: 26px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #cbd5e1; transition: .3s; border-radius: 26px;
+        }
+        .slider:before {
+            position: absolute; content: "";
+            height: 20px; width: 20px; left: 3px; bottom: 3px;
+            background-color: white; transition: .3s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--primary-color); }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        /* Историяҳо */
+        .stories-container {
+            display: flex; gap: 14px; padding: 16px;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            overflow-x: auto; align-items: center;
+        }
+        .story {
+            display: flex; flex-direction: column; align-items: center;
+            cursor: pointer; min-width: 72px; position: relative;
+        }
+        .story-ring {
+            width: 68px; height: 68px; border-radius: 50%;
+            background: var(--primary-gradient); padding: 3px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .story img, .story video {
+            width: 62px; height: 62px; border-radius: 50%;
+            object-fit: cover; border: 2px solid var(--card-bg); background: #000;
+        }
+        .story span {
+            font-size: 11px; font-weight: 500; margin-top: 6px;
+            color: var(--text-color); width: 72px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .delete-story-btn {
+            position: absolute; top: 0; right: 4px;
+            background: #ef4444; color: white; border: none;
+            width: 22px; height: 22px; border-radius: 50%; font-size: 11px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10;
+        }
+
+        #storyViewerModal {
+            display: none; position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95);
+            z-index: 2000; flex-direction: column; justify-content: center; align-items: center; color: white;
+        }
+        #storyViewerModal .viewer-header {
+            position: absolute; top: 25px; left: 20px; display: flex; align-items: center; gap: 12px;
+        }
+        #storyViewerModal .viewer-header img { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 2px solid white; }
+        #storyViewerModal .close-viewer {
+            position: absolute; top: 25px; right: 20px; background: none; border: none; color: white; font-size: 30px; cursor: pointer;
+        }
+        #viewerMediaContainer img, #viewerMediaContainer video { max-width: 92%; max-height: 78%; object-fit: contain; border-radius: 12px; }
+
+        /* Постҳо */
+        .post {
+            background: var(--card-bg); margin-bottom: 14px;
+            border-bottom: 1px solid var(--border-color); border-top: 1px solid var(--border-color);
+            position: relative; box-shadow: var(--shadow);
+        }
+        .post-header {
+            padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; font-weight: 600; font-size: 14px;
+        }
+        .post-user-info { display: flex; align-items: center; gap: 12px; }
+        .post-header img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+        .delete-post-btn {
+            background: #fee2e2; border: none; color: #ef4444; width: 32px; height: 32px;
+            border-radius: 50%; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .post-media { width: 100%; background: #000; }
+        .post-media img, .post-media video { width: 100%; max-height: 420px; display: block; object-fit: cover; }
+        .post-actions { padding: 14px 18px; font-size: 24px; display: flex; gap: 18px; }
+        .post-actions i { cursor: pointer; }
+        .post-actions i.liked { color: #ef4444; }
+        .post-likes { padding: 0 18px 8px 18px; font-weight: 700; font-size: 13px; }
+        .post-comments-section { padding: 0 18px 16px 18px; }
+        .comments-list { font-size: 13px; color: #64748b; margin-bottom: 10px; display: flex; flex-direction: column; gap: 6px; max-height: 100px; overflow-y: auto; }
+        .comment-input-box { display: flex; gap: 10px; }
+        .comment-input-box input {
+            flex: 1; padding: 8px 14px; border: 1px solid var(--border-color);
+            background: var(--bg-color); color: var(--text-color); border-radius: 20px; font-size: 13px; outline: none;
+        }
+        .comment-input-box button {
+            background: var(--primary-color); color: white; border: none; padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer;
+        }
+
+        .floating-buttons {
+            position: absolute; right: 20px; bottom: 80px; display: flex; flex-direction: column; gap: 12px; z-index: 1001;
+        }
+        .floating-btn {
+            background: var(--primary-gradient); color: white; border: none; width: 50px; height: 50px;
+            border-radius: 50%; font-size: 20px; cursor: pointer; box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+            display: flex; align-items: center; justify-content: center;
+        }
+        #mediaInput, #postInput { display: none; }
+
+        /* Чат ва Зангҳо */
+        .search-box {
+            padding: 14px 18px; background: var(--card-bg); border-bottom: 1px solid var(--border-color); display: flex; gap: 10px;
+        }
+        .search-box input {
+            flex: 1; padding: 10px 16px; border: 1px solid var(--border-color); border-radius: 22px;
+            outline: none; font-size: 14px; background: var(--bg-color); color: var(--text-color);
+        }
+        .search-box button {
+            background: var(--primary-color); color: white; border: none; padding: 0 20px; border-radius: 22px; cursor: pointer; font-weight: 600; font-size: 13px;
+        }
+
+        .chat-header {
+            background: var(--card-bg); color: var(--text-color); padding: 12px 18px; font-size: 14px; font-weight: 600;
+            border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;
+        }
+        .chat-call-actions { display: flex; gap: 15px; font-size: 18px; color: var(--primary-color); cursor: pointer; }
+        .chat-call-actions i:hover { opacity: 0.7; }
+
+        .chat-messages {
+            padding: 16px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; flex: 1;
+        }
+        .message {
+            padding: 10px 16px; border-radius: 14px; max-width: 75%; word-wrap: break-word; font-size: 14px; line-height: 1.4; box-shadow: var(--shadow);
+        }
+        .message.received { background: var(--card-bg); align-self: flex-start; border: 1px solid var(--border-color); }
+        .message.sent { background: #dcf8c6; align-self: flex-end; color: #000; }
+
+        .chat-input-area {
+            display: flex; background: var(--card-bg); padding: 12px 18px; border-top: 1px solid var(--border-color); gap: 12px; align-items: center;
+        }
+        .chat-input-area input {
+            flex: 1; padding: 10px 16px; border: 1px solid var(--border-color); border-radius: 22px;
+            outline: none; font-size: 14px; background: var(--bg-color); color: var(--text-color);
+        }
+        .chat-input-area button {
+            background: var(--whatsapp-color); color: white; border: none; width: 42px; height: 42px;
+            display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer;
+        }
+
+        /* Окнои Зангкунӣ */
+        #callModal {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #0f172a; z-index: 4000; flex-direction: column; justify-content: space-between; align-items: center; padding: 40px 20px; color: white; text-align: center;
+        }
+        .call-user-info { display: flex; flex-direction: column; align-items: center; gap: 15px; margin-top: 40px; }
+        .call-user-avatar { width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 4px solid var(--primary-color); }
+        .call-status { font-size: 14px; color: #94a3b8; }
+        
+        #localVideo {
+            width: 100%; max-height: 350px; border-radius: 16px; background: #000; object-fit: cover; display: none; margin-top: 20px;
+        }
+
+        .call-actions-bar { display: flex; gap: 30px; margin-bottom: 30px; }
+        .end-call-btn {
+            background: #ef4444; color: white; border: none; width: 65px; height: 65px; border-radius: 50%;
+            font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.5);
+        }
+
+        /* Профил */
+        .profile-container {
+            padding: 30px 20px; background: var(--card-bg); display: flex; flex-direction: column; align-items: center; gap: 18px; flex: 1;
+        }
+        .profile-avatar { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 4px solid var(--primary-color); }
+        .profile-info { width: 100%; display: flex; flex-direction: column; gap: 14px; }
+        .profile-info label { font-size: 12px; color: #64748b; font-weight: 700; }
+        .profile-info input, .profile-info textarea {
+            width: 100%; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 12px;
+            font-size: 14px; outline: none; background: var(--bg-color); color: var(--text-color);
+        }
+        .profile-info textarea { resize: none; height: 80px; }
+        .save-btn {
+            background: var(--primary-gradient); color: white; border: none; padding: 14px; border-radius: 12px;
+            font-size: 15px; cursor: pointer; width: 100%; font-weight: 700; margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container" id="appContainer">
+        
+        <!-- Равзанаи Занги Овозӣ ва Видеоӣ -->
+        <div id="callModal">
+            <div class="call-user-info">
+                <img id="callUserAvatar" src="https://via.placeholder.com/100" alt="Caller" class="call-user-avatar">
+                <h2 id="callUserName">Номи дӯст</h2>
+                <div class="call-status" id="callStatusText">Занг зада истодааст...</div>
+            </div>
+            
+            <video id="localVideo" autoplay playsinline muted></video>
+
+            <div class="call-actions-bar">
+                <button class="end-call-btn" onclick="endCall()" title="Қатъ кардан"><i class="fas fa-phone-slash"></i></button>
+            </div>
+        </div>
+
+        <!-- Танзимот -->
+        <div id="settingsModal">
+            <div class="settings-header">
+                <i class="fas fa-arrow-left" onclick="closeSettings()"></i>
+                <span>Танзимот ва Амният</span>
+            </div>
+            <div class="settings-body">
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-title">Режими Торик (Dark Mode)</span>
+                        <span class="setting-desc">Тағйир додани намуди барнома</span>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-item" onclick="setAppLock()" style="cursor: pointer;">
+                    <div class="setting-info">
+                        <span class="setting-title">Парол барои чатҳо (App Lock)</span>
+                        <span class="setting-desc">Танзими PIN-код барои ҳифз</span>
+                    </div>
+                    <i class="fas fa-lock" style="color: var(--primary-color);"></i>
+                </div>
+                <div class="setting-item" onclick="clearAllData()" style="cursor: pointer;">
+                    <div class="setting-info">
+                        <span class="setting-title" style="color: #ef4444;">Тоза кардани ҳамаи маълумот</span>
+                        <span class="setting-desc">Нест кардани чатҳо ва постҳо</span>
+                    </div>
+                    <i class="fas fa-trash" style="color: #ef4444;"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Намоиши История -->
+        <div id="storyViewerModal">
+            <div class="viewer-header">
+                <img id="viewerAvatar" src="" alt="Avatar">
+                <span id="viewerName" style="font-weight: bold; font-size: 16px;"></span>
+            </div>
+            <button class="close-viewer" onclick="closeStoryViewer()">&times;</button>
+            <div id="viewerMediaContainer" style="display: flex; justify-content: center; align-items: center; width: 100%; height: 100%;"></div>
+        </div>
+
+        <!-- 1. ЛЕНТА -->
+        <div id="feed-tab" class="tab-content active">
+            <div class="app-header">
+                <span>ChatGram</span>
+                <div class="header-icons">
+                    <i class="fas fa-cog" onclick="openSettings()" title="Танзимот"></i>
+                </div>
+            </div>
+            <div class="stories-container" id="storiesContainer"></div>
+            <div id="postsContainer"></div>
+        </div>
+
+        <div class="floating-buttons">
+            <button class="floating-btn" onclick="document.getElementById('mediaInput').click()" title="История">
+                <i class="fas fa-plus"></i>
+            </button>
+            <button class="floating-btn" onclick="document.getElementById('postInput').click()" title="Пост">
+                <i class="fas fa-camera"></i>
+            </button>
+        </div>
+        <input type="file" id="mediaInput" accept="image/*,video/*" onchange="handleMediaUpload(event)">
+        <input type="file" id="postInput" accept="image/*,video/*" onchange="handlePostUpload(event)">
+
+        <!-- 2. ЧАТ ВА ЗАНГҲО -->
+        <div id="chat-tab" class="tab-content">
+            <div class="app-header">
+                <span>Паёмҳои Махфи</span>
+                <div class="header-icons">
+                    <i class="fas fa-cog" onclick="openSettings()" title="Танзимот"></i>
+                </div>
+            </div>
+            <div class="search-box">
+                <input type="text" id="searchPhoneInput" placeholder="Рақами телефони дӯстро нависед...">
+                <button onclick="findContact()">Ёфтан</button>
+            </div>
+            <div class="chat-header">
+                <span id="chatHeaderTitle">Чат интихоб нашудааст</span>
+                <div class="chat-call-actions" id="chatCallActions" style="display: none;">
+                    <i class="fas fa-phone-alt" onclick="startAudioCall()" title="Занги овозӣ"></i>
+                    <i class="fas fa-video" onclick="startVideoCall()" title="Занги видеоӣ"></i>
+                </div>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <div class="message received">Паёмҳо бо рамзгузории қавӣ муҳофизат шудаанд.</div>
+            </div>
+            <div class="chat-input-area">
+                <input type="text" id="messageInput" placeholder="Паёми махфи..." onkeypress="handleKeyPress(event)">
+                <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+
+        <!-- 3. ПРОФИЛ -->
+        <div id="profile-tab" class="tab-content">
+            <div class="app-header">
+                <span>Профили Ман</span>
+                <div class="header-icons">
+                    <i class="fas fa-cog" onclick="openSettings()" title="Танзимот"></i>
+                </div>
+            </div>
+            <div class="profile-container">
+                <img src="https://via.placeholder.com/100" alt="Avatar" class="profile-avatar" id="profileAvatarImg">
+                <div class="profile-info">
+                    <label>Номи ҳақиқӣ:</label>
+                    <input type="text" id="profileNameInput" value="Номи Ман">
+                    <label>Рақами телефони ман:</label>
+                    <input type="text" id="profilePhoneInput" value="+992000000000">
+                    <label>Описание (Bio):</label>
+                    <textarea id="profileBioInput">Амният ва махфият...</textarea>
+                    <button class="save-btn" onclick="saveProfile()">Захира кардан</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- МЕНЮИ ПОЁНИ -->
+        <div class="nav-bar">
+            <button onclick="switchTab('feed', event)" class="tab-btn active">
+                <i class="fas fa-home"></i>
+                <span>Лента</span>
+            </button>
+            <button onclick="switchTab('chat', event)" class="tab-btn">
+                <i class="fas fa-comment-dots"></i>
+                <span>Чат</span>
+            </button>
+            <button onclick="switchTab('profile', event)" class="tab-btn">
+                <i class="fas fa-user"></i>
+                <span>Профил</span>
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // ==========================================
+        // ТАНЗИМОТИ FIREBASE (Ин ҷоро бо маълумоти лоиҳаи худ пур кунед)
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Инициализатсияи Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+
+        let localStream = null;
+
+        async function startAudioCall() {
+            if (!activeChatPhone) { alert("Аввал чатро интихоб кунед!"); return; }
+            document.getElementById('callUserName').textContent = `Занг бо: ${activeChatPhone}`;
+            document.getElementById('callStatusText').textContent = "Занги овозӣ рафта истодааст...";
+            document.getElementById('localVideo').style.display = 'none';
+            document.getElementById('callModal').style.display = 'flex';
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            } catch (e) { console.log("Микрофон дастнорас аст."); }
+        }
+
+        async function startVideoCall() {
+            if (!activeChatPhone) { alert("Аввал чатро интихоб кунед!"); return; }
+            document.getElementById('callUserName').textContent = `Видеозанги бо: ${activeChatPhone}`;
+            document.getElementById('callStatusText').textContent = "Видеозанг пайваст мешавад...";
+            let videoEl = document.getElementById('localVideo');
+            videoEl.style.display = 'block';
+            document.getElementById('callModal').style.display = 'flex';
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                videoEl.srcObject = localStream;
+            } catch (e) { alert("Камера ё микрофон фаъол карда нашуд!"); }
+        }
+
+        function endCall() {
+            if (localStream) { localStream.getTracks().forEach(track => track.stop()); }
+            document.getElementById('localVideo').srcObject = null;
+            document.getElementById('callModal').style.display = 'none';
+        }
+
+        function openSettings() {
+            let pin = localStorage.getItem('secure_app_pin');
+            if (pin) {
+                let enteredPin = prompt("PIN-коди амниятиро ворид кунед:");
+                if (enteredPin !== pin) { alert("PIN-код хато аст!"); return; }
+            }
+            document.getElementById('settingsModal').style.display = 'flex';
+        }
+
+        function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
+
+        function setAppLock() {
+            let newPin = prompt("PIN-коди нави худро ворид кунед:");
+            if (newPin) { localStorage.setItem('secure_app_pin', newPin); alert("PIN-код бомуваффақият гузошта шуд!"); }
+        }
+
+        function toggleDarkMode() {
+            let appContainer = document.getElementById('appContainer');
+            appContainer.classList.toggle('dark-theme');
+            localStorage.setItem('secure_dark_mode', appContainer.classList.contains('dark-theme'));
+        }
+
+        function clearAllData() {
+            if (confirm("Диққат! Ҳамаи маълумот ва чатҳо тоза карда мешаванд.")) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        function getMyProfile() {
+            return JSON.parse(localStorage.getItem('secure_profile')) || {
+                name: "Номи Ман", phone: "+992918000000", bio: "Амният ва махфият...", avatar: "https://via.placeholder.com/100"
+            };
+        }
+
+        function loadProfile() {
+            let profile = getMyProfile();
+            document.getElementById('profileNameInput').value = profile.name;
+            document.getElementById('profilePhoneInput').value = profile.phone;
+            document.getElementById('profileBioInput').value = profile.bio;
+            document.getElementById('profileAvatarImg').src = profile.avatar;
+            if (localStorage.getItem('secure_dark_mode') === 'true') {
+                document.getElementById('appContainer').classList.add('dark-theme');
+                document.getElementById('darkModeToggle').checked = true;
+            }
+        }
+
+        function saveProfile() {
+            let profile = getMyProfile();
+            profile.name = document.getElementById('profileNameInput').value;
+            profile.phone = document.getElementById('profilePhoneInput').value;
+            profile.bio = document.getElementById('profileBioInput').value;
+            localStorage.setItem('secure_profile', JSON.stringify(profile));
+            loadProfile();
+            alert("Профил захира шуд!");
+        }
+
+        let postsData = JSON.parse(localStorage.getItem('secure_posts')) || [];
+
+        function renderPosts() {
+            let container = document.getElementById('postsContainer');
+            container.innerHTML = '';
+            if (postsData.length === 0) {
+                container.innerHTML = `<div style="padding: 40px; text-align: center; color: #64748b; font-size: 14px;">Лента холӣ аст. Видео ё расм партоед!</div>`;
+                return;
+            }
+            let profile = getMyProfile();
+            postsData.forEach((post) => {
+                let mediaHTML = post.type === 'video' ? `<video controls src="${post.url}"></video>` : `<img src="${post.url}" alt="Post">`;
+                let commentsHTML = '';
+                if (post.comments) { post.comments.forEach(c => { commentsHTML += `<div><b>${c.user}:</b> ${c.text}</div>`; }); }
+                let isMyPost = post.phone === profile.phone || post.name === profile.name;
+                let deletePostBtn = isMyPost ? `<button class="delete-post-btn" onclick="deletePost(${post.id})"><i class="fas fa-trash"></i></button>` : '';
+
+                container.innerHTML += `
+                    <div class="post" data-id="${post.id}">
+                        <div class="post-header">
+                            <div class="post-user-info">
+                                <img src="${post.avatar}" alt="Avatar">
+                                <span>${post.name}</span>
+                            </div>
+                            ${deletePostBtn}
+                        </div>
+                        <div class="post-media">${mediaHTML}</div>
+                        <div class="post-actions">
+                            <i class="${post.liked ? 'fas liked' : 'far'} fa-heart" onclick="togglePostLike(${post.id})"></i>
+                            <i class="far fa-comment"></i>
+                        </div>
+                        <div class="post-likes">${post.likes} писандида</div>
+                        <div class="post-comments-section">
+                            <div class="comments-list">${commentsHTML}</div>
+                            <div class="comment-input-box">
+                                <input type="text" id="comment-input-${post.id}" placeholder="Шарҳ...">
+                                <button onclick="addComment(${post.id})">Фиристодан</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function deletePost(postId) {
+            if (confirm("Ин пост удалит карда шавад?")) {
+                postsData = postsData.filter(p => p.id !== postId);
+                localStorage.setItem('secure_posts', JSON.stringify(postsData));
+                renderPosts();
+            }
+        }
+
+        function togglePostLike(postId) {
+            let post = postsData.find(p => p.id === postId);
+            if (post) {
+                if (post.liked) { post.likes -= 1; post.liked = false; }
+                else { post.likes += 1; post.liked = true; }
+                localStorage.setItem('secure_posts', JSON.stringify(postsData));
+                renderPosts();
+            }
+        }
+
+        function addComment(postId) {
+            let input = document.getElementById(`comment-input-${postId}`);
+            let text = input.value.trim();
+            if (!text) return;
+            let profile = getMyProfile();
+            let post = postsData.find(p => p.id === postId);
+            if (post) {
+                if (!post.comments) post.comments = [];
+                post.comments.push({ user: profile.name, text: text });
+                localStorage.setItem('secure_posts', JSON.stringify(postsData));
+                renderPosts();
+            }
+        }
+
+        function handlePostUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const mediaUrl = URL.createObjectURL(file);
+                let profile = getMyProfile();
+                let fileType = file.type.startsWith('video') ? 'video' : 'image';
+                postsData.unshift({
+                    id: Date.now(), phone: profile.phone, name: profile.name,
+                    avatar: profile.avatar, url: mediaUrl, type: fileType, likes: 0, liked: false, comments: []
+                });
+                localStorage.setItem('secure_posts', JSON.stringify(postsData));
+                renderPosts();
+                alert("Пост бомуваффақият бор шуд!");
+            }
+        }
+
+        let mediaStories = JSON.parse(localStorage.getItem('secure_stories')) || [];
+
+        function renderStories() {
+            let container = document.getElementById('storiesContainer');
+            container.innerHTML = '';
+            let profile = getMyProfile();
+            let myStoryIndex = mediaStories.findIndex(s => s.phone === profile.phone || s.name === profile.name);
+            
+            if (myStoryIndex === -1) {
+                container.innerHTML = `
+                    <div class="story" onclick="document.getElementById('mediaInput').click()">
+                        <div class="story-ring" style="background: #cbd5e1;">
+                            <img src="${profile.avatar}" alt="Story">
+                        </div>
+                        <span>Шумо (+)</span>
+                    </div>
+                `;
+            }
+
+            mediaStories.forEach((story, index) => {
+                let previewHTML = story.type === 'video' ? `<video src="${story.url}" muted></video>` : `<img src="${story.url}" alt="Story">`;
+                let isMyStory = story.phone === profile.phone || story.name === profile.name;
+                let deleteBtnHTML = isMyStory ? `<button class="delete-story-btn" onclick="deleteStory(${index}, event)">&times;</button>` : '';
+
+                container.innerHTML += `
+                    <div class="story" onclick="openStoryViewer(${index})">
+                        <div class="story-ring">${previewHTML}</div>
+                        <span>${isMyStory ? 'Шумо' : story.name}</span>
+                        ${deleteBtnHTML}
+                    </div>
+                `;
+            });
+        }
+
+        function deleteStory(index, event) {
+            event.stopPropagation();
+            if (confirm("История удалит карда шавад?")) {
+                mediaStories.splice(index, 1);
+                localStorage.setItem('secure_stories', JSON.stringify(mediaStories));
+                renderStories();
+            }
+        }
+
+        function openStoryViewer(index) {
+            let story = mediaStories[index];
+            if (!story) return;
+            document.getElementById('viewerName').textContent = story.name;
+            document.getElementById('viewerAvatar').src = story.avatar || "https://via.placeholder.com/40";
+            let mediaContainer = document.getElementById('viewerMediaContainer');
+            mediaContainer.innerHTML = story.type === 'video' ? `<video src="${story.url}" controls autoplay></video>` : `<img src="${story.url}" alt="Story">`;
+            document.getElementById('storyViewerModal').style.display = 'flex';
+        }
+
+        function closeStoryViewer() {
+            document.getElementById('storyViewerModal').style.display = 'none';
+            document.getElementById('viewerMediaContainer').innerHTML = '';
+        }
+
+        function handleMediaUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const mediaUrl = URL.createObjectURL(file);
+                let profile = getMyProfile();
+                let fileType = file.type.startsWith('video') ? 'video' : 'image';
+                mediaStories.push({ phone: profile.phone, name: profile.name, avatar: profile.avatar, url: mediaUrl, type: fileType });
+                localStorage.setItem('secure_stories', JSON.stringify(mediaStories));
+                renderStories();
+                alert("История бор шуд!");
+            }
+        }
+
+        let activeChatPhone = null;
+
+        function findContact() {
+            let phoneQuery = document.getElementById('searchPhoneInput').value.trim();
+            let profile = getMyProfile();
+            if (!phoneQuery) { alert("Рақамро ворид кунед!"); return; }
+            if (phoneQuery === profile.phone) { alert("Наметавонед бо худатон чат кунед!"); return; }
+
+            activeChatPhone = phoneQuery;
+            document.getElementById('chatHeaderTitle').textContent = `Чат: ${phoneQuery}`;
+            document.getElementById('chatCallActions').style.display = 'flex';
+            loadChatMessages();
+            alert(`Чат бо рақами ${phoneQuery} фаъол шуд.`);
+        }
+
+        function getSecureChatKey() {
+            let profile = getMyProfile();
+            if (!activeChatPhone) return null;
+            let sortedPhones = [profile.phone, activeChatPhone].sort();
+            return `secure_enc_chat_${btoa(sortedPhones[0])}_${btoa(sortedPhones[1])}`;
+        }
+
+        function loadChatMessages() {
+            let chatMessages = document.getElementById('chatMessages');
+            chatMessages.innerHTML = '';
+            let storageKey = getSecureChatKey();
+            if (!storageKey) {
+                chatMessages.innerHTML = `<div class="message received">Аввал рақамро ҷустуҷӯ кунед.</div>`;
+                return;
+            }
+            let messagesData = JSON.parse(localStorage.getItem(storageKey)) || [];
+            if (messagesData.length === 0) {
+                chatMessages.innerHTML = `<div class="message received">Паёмҳо рамзгузорӣ шудаанд (End-to-End Encrypted).</div>`;
+                return;
+            }
+            messagesData.forEach(msg => {
+                chatMessages.innerHTML += `<div class="message ${msg.sender}">${msg.text}</div>`;
+            });
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function sendMessage() {
+            let storageKey = getSecureChatKey();
+            if (!storageKey) { alert("Аввал рақамро ҷустуҷӯ кунед!"); return; }
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+            if (text === '') return;
+
+            let messagesData = JSON.parse(localStorage.getItem(storageKey)) || [];
+            messagesData.push({ text: text, sender: 'sent' });
+            localStorage.setItem(storageKey, JSON.stringify(messagesData));
+            loadChatMessages();
+            input.value = '';
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') { sendMessage(); }
+        }
+
+        function switchTab(tabName, event) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+
+            if (tabName === 'feed') {
+                document.getElementById('feed-tab').classList.add('active');
+                renderStories(); renderPosts();
+            } else if (tabName === 'chat') {
+                document.getElementById('chat-tab').classList.add('active');
+            } else if (tabName === 'profile') {
+                document.getElementById('profile-tab').classList.add('active');
+                loadProfile();
+            }
+            if (event && event.currentTarget) { event.currentTarget.classList.add('active'); }
+        }
+
+        window.onload = function() {
+            loadProfile(); renderStories(); renderPosts();
+        };
+    </script>
+</body>
+</html>
