@@ -769,7 +769,7 @@
             });
         }
 
-        // --- ИСТОРИЯҲО ---
+        // --- ИСТОРИЯҲОИ МУКАММАЛ ---
         function handleMediaUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -778,7 +778,7 @@
             let fileType = file.type.startsWith('video') ? 'video' : 'image';
             let storageRef = storage.ref(`stories/${Date.now()}_${file.name}`);
 
-            alert("Боркунии история...");
+            alert("Боркунии история оғоз шуд, лутфан интизор шавед...");
             storageRef.put(file).then((snapshot) => {
                 snapshot.ref.getDownloadURL().then((downloadURL) => {
                     db.collection("stories").add({
@@ -789,9 +789,11 @@
                         type: fileType,
                         timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     }).then(() => {
-                        alert("История бор шуд!");
+                        alert("История бомуваффақият бор шуд!");
                     });
                 });
+            }).catch((error) => {
+                alert("Хатогӣ дар боркунии медиа: " + error.message);
             });
         }
 
@@ -812,7 +814,11 @@
                 snapshot.forEach((doc) => {
                     let story = doc.data();
                     let storyId = doc.id;
-                    let previewHTML = story.type === 'video' ? `<video src="${story.url}" muted></video>` : `<img src="${story.url}" alt="Story">`;
+                    
+                    // Ислоҳи превьюи видео дар историяҳо бо атрибутҳои зарурӣ
+                    let previewHTML = story.type === 'video' 
+                        ? `<video src="${story.url}" muted playsinline preload="metadata"></video>` 
+                        : `<img src="${story.url}" alt="Story">`;
                     
                     let isMyStory = story.phone === profile.phone;
                     let deleteBtn = isMyStory ? `<button class="delete-story-btn" onclick="deleteStoryOnline('${storyId}', event)">&times;</button>` : '';
@@ -839,7 +845,12 @@
             document.getElementById('viewerName').textContent = name;
             document.getElementById('viewerAvatar').src = avatar || "https://via.placeholder.com/40";
             let mediaContainer = document.getElementById('viewerMediaContainer');
-            mediaContainer.innerHTML = type === 'video' ? `<video src="${url}" controls autoplay></video>` : `<img src="${url}" alt="Story">`;
+            
+            // Ислоҳи просмотри асосии видео бо дастгирии autoplay ва controls
+            mediaContainer.innerHTML = type === 'video' 
+                ? `<video src="${url}" controls autoplay playsinline style="max-width:92%; max-height:78%; border-radius:12px;"></video>` 
+                : `<img src="${url}" alt="Story" style="max-width:92%; max-height:78%; border-radius:12px; object-fit:contain;">`;
+            
             document.getElementById('storyViewerModal').style.display = 'flex';
         }
 
@@ -847,7 +858,6 @@
             document.getElementById('storyViewerModal').style.display = 'none';
             document.getElementById('viewerMediaContainer').innerHTML = '';
         }
-
         // --- ЗАНГҲОИ WEBRTC & SIGNALING БО САДОИ КАФОЛАТДОДАШУДА ---
         async function startCall(isVideo) {
             if (!activeChatPhone) {
