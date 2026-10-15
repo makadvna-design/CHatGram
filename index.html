@@ -769,16 +769,23 @@
             });
         }
 
-      // --- ИСТОРИЯҲОИ МУКАММАЛ ---
+   // --- ИСТОРИЯҲО (БО ИШБОТИ ВИДЕО ВА АКС) ---
         function handleMediaUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
+
+            // Санҷиши ҳаҷми файл (масалан, агар аз 15 МБ зиёд бошад, огоҳ кунад)
+            if (file.size > 15 * 1024 * 1024) {
+                alert("Ҳаҷми видео хеле калон аст! Лутфан видеои кӯтоҳтар (то 15 МБ) интихоб кунед.");
+                return;
+            }
 
             let profile = getMyProfile();
             let fileType = file.type.startsWith('video') ? 'video' : 'image';
             let storageRef = storage.ref(`stories/${Date.now()}_${file.name}`);
 
-            alert("Боркунии история оғоз шуд, лутфан интизор шавед...");
+            alert("Боркунии история оғоз шуд... Интизор шавед.");
+            
             storageRef.put(file).then((snapshot) => {
                 snapshot.ref.getDownloadURL().then((downloadURL) => {
                     db.collection("stories").add({
@@ -793,7 +800,7 @@
                     });
                 });
             }).catch((error) => {
-                alert("Хатогӣ дар боркунии медиа: " + error.message);
+                alert("Хатогӣ дар боркунӣ: " + error.message);
             });
         }
 
@@ -815,9 +822,10 @@
                     let story = doc.data();
                     let storyId = doc.id;
                     
-                    // Ислоҳи превьюи видео дар историяҳо бо атрибутҳои зарурӣ
+                    // Барои он ки превьюи видео дар телефон ягон хатогӣ надиҳад, 
+                    // агар видео бошад, метавонем нишонаи видео ё худи теги видеоро бо preload созем:
                     let previewHTML = story.type === 'video' 
-                        ? `<video src="${story.url}" muted playsinline preload="metadata"></video>` 
+                        ? `<div style="width:62px; height:62px; border-radius:50%; background:#000; display:flex; align-items:center; justify-content:center; color:white; font-size:20px;"><i class="fas fa-play"></i></div>` 
                         : `<img src="${story.url}" alt="Story">`;
                     
                     let isMyStory = story.phone === profile.phone;
@@ -846,10 +854,11 @@
             document.getElementById('viewerAvatar').src = avatar || "https://via.placeholder.com/40";
             let mediaContainer = document.getElementById('viewerMediaContainer');
             
-            // Ислоҳи просмотри асосии видео бо дастгирии autoplay ва controls
-            mediaContainer.innerHTML = type === 'video' 
-                ? `<video src="${url}" controls autoplay playsinline style="max-width:92%; max-height:78%; border-radius:12px;"></video>` 
-                : `<img src="${url}" alt="Story" style="max-width:92%; max-height:78%; border-radius:12px; object-fit:contain;">`;
+            if (type === 'video') {
+                mediaContainer.innerHTML = `<video src="${url}" controls autoplay playsinline style="max-width:92%; max-height:78%; border-പരമായ:12px; background:#000;"></video>`;
+            } else {
+                mediaContainer.innerHTML = `<img src="${url}" alt="Story" style="max-width:92%; max-height:78%; border-radius:12px; object-fit:contain;">`;
+            }
             
             document.getElementById('storyViewerModal').style.display = 'flex';
         }
