@@ -842,90 +842,92 @@
         }
 
         // --- ЗАНГҲОИ WEBRTC & FIRESTORE SIGNALING ---
-        async function startCall(isVideo) {
-            if (!activeChatPhone) {
-                alert("Аввал чатро интихоб кунед!");
-                return;
+       // --- ЗАНГҲОИ WEBRTC & ICE CANDIDATES (МУКАММАЛ) ---
+async function startCall(isVideo) {
+    if (!activeChatPhone) {
+        alert("Аввал чатро интихоб кунед!");
+        return;
+    }
+
+    let profile = getMyProfile();
+    let chatId = getSecureChatKey();
+
+    document.getElementById('callUserName').textContent = `Занг бо: ${activeChatPhone}`;
+    document.getElementById('callStatusText').textContent = "Пайнавишти занг...";
+    let videoEl = document.getElementById('localVideo');
+    videoEl.style.display = isVideo ? 'block' : 'none';
+    document.getElementById('callModal').style.display = 'flex';
+
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: isVideo });
+        if (isVideo) {
+            videoEl.srcObject = localStream;
+        }
+
+        peerConnection = new RTCPeerConnection(rpcConfig);
+
+        localStream.getTracks().forEach(track => {
+            peerConnection.addTrack(track, localStream);
+        });
+
+        peerConnection.ontrack = (event) => {
+            if (event.streams && event.streams[0]) {
+                videoEl.srcObject = event.streams[0];
+                videoEl.style.display = 'block';
+                document.getElementById('callStatusText').textContent = "Занг пайваст шуд!";
             }
+        };
 
-            let profile = getMyProfile();
-            let chatId = getSecureChatKey();
+        let callDocRef = db.collection("chats").doc(chatId).collection("calls").doc("activeCall");
+        let callerCandidatesCollection = callDocRef.collection("callerCandidates");
+        let calleeCandidatesCollection = callDocRef.collection("calleeCandidates");
 
-            document.getElementById('callUserName').textContent = `Занг бо: ${activeChatPhone}`;
-            document.getElementById('callStatusText').textContent = "Пайнавишти занг...";
-            let videoEl = document.getElementById('localVideo');
-            videoEl.style.display = isVideo ? 'block' : 'none';
-            document.getElementById('callModal').style.display = 'flex';
+        // Ҷамъоварии ICE Candidates барои пайвасти шабакаӣ
+        peerConnection.onicecandidate = (event) => {
+            if (event.candidate) {
+                callerCandidatesCollection.add(event.candidate.toJSON());
+            }
+        };
 
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: isVideo });
-                if (isVideo) {
-                    videoEl.srcObject = localStream;
+        let offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+
+        await callDocRef.set({
+            caller: profile.phone,
+            offer: { type: offer.type, sdp: offer.sdp },
+            status: "calling",
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        document.getElementById('callStatusText').textContent = "Занг рафта истодааст... Интизори ҷавоб.";
+
+        // Гӯш кардани ҷавоб (Answer) ва ивази Candidate-ҳо
+        callDocRef.onSnapshot(async (snapshot) => {
+            let data = snapshot.data();
+            if (!data) return;
+
+            if (peerConnection && !peerConnection.currentRemoteDescription && data.answer) {
+                let remoteDesc = new RTCSessionDescription(data.answer);
+                await peerConnection.setRemoteDescription(remoteDesc);
+            }
+        });
+
+        calleeCandidatesCollection.onSnapshot((snapshot) => {
+            snapshot.docChanges().forEach(async (change) => {
+                if (change.type === 'added') {
+                    let candidate = new RTCIceCandidate(change.doc.data());
+                    if (peerConnection) {
+                        await peerConnection.addIceCandidate(candidate);
+                    }
                 }
+            });
+        });
 
-                peerConnection = new RTCPeerConnection(rpcConfig);
-
-                localStream.getTracks().forEach(track => {
-                    peerConnection.addTrack(track, localStream);
-                });
-
-                peerConnection.ontrack = (event) => {
-                    if (event.streams && event.streams[0]) {
-                        videoEl.srcObject = event.streams[0];
-                        videoEl.style.display = 'block';
-                    }
-                };
-
-                let callDocRef = db.collection("chats").doc(chatId).collection("calls").doc("activeCall");
-
-                let offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-
-                await callDocRef.set({
-                    caller: profile.phone,
-                    offer: { type: offer.type, sdp: offer.sdp },
-                    status: "calling",
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                });
-
-                document.getElementById('callStatusText').textContent = "Занг рафта истодааст...";
-
-                callDocRef.onSnapshot(async (doc) => {
-                    if (!doc.exists) return;
-                    let data = doc.data();
-                    if (data.answer && peerConnection && !peerConnection.currentRemoteDescription) {
-                        let remoteDesc = new RTCSessionDescription(data.answer);
-                        await peerConnection.setRemoteDescription(remoteDesc);
-                        document.getElementById('callStatusText').textContent = "Пайваст шуд!";
-                    }
-                });
-
-            } catch (e) {
-                alert("Хатогӣ дар занг: " + e.message);
-                endCall();
-            }
-        }
-
-        function startAudioCall() { startCall(false); }
-        function startVideoCall() { startCall(true); }
-
-        function endCall() {
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-            }
-            if (peerConnection) {
-                peerConnection.close();
-                peerConnection = null;
-            }
-            document.getElementById('localVideo').srcObject = null;
-            document.getElementById('callModal').style.display = 'none';
-
-            let chatId = getSecureChatKey();
-            if (chatId) {
-                db.collection("chats").doc(chatId).collection("calls").doc("activeCall").delete().catch(() => {});
-            }
-        }
-
+    } catch (e) {
+        alert("Хатогӣ дар барқароркунии занг: " + e.message);
+        endCall();
+    }
+}
         // --- ИДОРАИ ТАБҲО ВА ТУГМАҲО ---
         function switchTab(tabName, event) {
             document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
